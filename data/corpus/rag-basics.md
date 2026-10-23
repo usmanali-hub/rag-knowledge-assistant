@@ -1,0 +1,3 @@
+# Retrieval-augmented generation
+
+Retrieval-augmented generation, or RAG, gives a language model access to documents it was never trained on. A RAG system first retrieves the passages most relevant to a question and then places them in the prompt so the model can answer from that evidence. This reduces hallucination because the model is asked to rely on supplied context. It also lets teams update knowledge by changing documents instead of retraining a model. A RAG pipeline has two phases. Indexing splits documents into chunks, converts each chunk into an embedding vector and stores it. Querying embeds the question, finds the nearest chunks and builds a prompt that includes them with citations.

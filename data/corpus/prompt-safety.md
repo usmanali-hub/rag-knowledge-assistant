@@ -1,0 +1,3 @@
+# Grounding and prompt injection
+
+A grounded prompt tells the model to answer only from the supplied context and to say it does not know when the context is silent. Asking for citations lets a reader check each claim against its source. Retrieved text is untrusted input: a document can contain instructions such as ignore your previous rules, which is called prompt injection. Treat retrieved passages as data, keep system instructions separate, limit the tools the model can call and never place secrets in the context. Logging the question, the retrieved sources and the answer makes failures easy to investigate.

@@ -1,0 +1,20 @@
+[
+  {"question": "Why does RAG reduce hallucination?", "sources": ["rag-basics.md", "prompt-safety.md"]},
+  {"question": "What are the two phases of a RAG pipeline?", "sources": ["rag-basics.md"]},
+  {"question": "How much should neighbouring chunks overlap?", "sources": ["chunking.md"]},
+  {"question": "Why not make chunks very large?", "sources": ["chunking.md"]},
+  {"question": "Why normalise vectors to unit length?", "sources": ["embeddings.md"]},
+  {"question": "What speeds up nearest neighbour search for millions of vectors?", "sources": ["embeddings.md"]},
+  {"question": "Why does repeating a word many times not help a document in BM25?", "sources": ["bm25.md"]},
+  {"question": "Which ranking function weights rare terms more heavily?", "sources": ["bm25.md"]},
+  {"question": "How do I merge keyword and vector result lists without calibrating scores?", "sources": ["hybrid-search.md"]},
+  {"question": "What does a cross-encoder reranker do?", "sources": ["hybrid-search.md"]},
+  {"question": "What does recall at k measure?", "sources": ["evaluation.md"]},
+  {"question": "Why keep the evaluation set fixed?", "sources": ["evaluation.md"]},
+  {"question": "How do I make Docker rebuilds faster?", "sources": ["docker-basics.md"]},
+  {"question": "How do I run an API and a database together in containers?", "sources": ["docker-basics.md"]},
+  {"question": "What is prompt injection in retrieved documents?", "sources": ["prompt-safety.md"]},
+  {"question": "Should the model say when it doesn't know?", "sources": ["prompt-safety.md"]},
+  {"question": "Which method finds exact error codes and product names reliably?", "sources": ["bm25.md", "embeddings.md"]},
+  {"question": "How do dense embeddings handle synonyms?", "sources": ["embeddings.md"]}
+]

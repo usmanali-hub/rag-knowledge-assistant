@@ -1,0 +1,3 @@
+# Docker for model services
+
+Docker packages an application with its dependencies into an image, so it runs the same on a laptop and on a server. A Dockerfile lists the base image, the files to copy, the packages to install and the command to run. Layers are cached, so copying the requirements file and installing packages before copying the source code makes rebuilds fast. A container is a running instance of an image. Docker Compose describes several containers, for example an API and a database, in one file and starts them together. Keep images small by using slim base images and avoid baking secrets into layers.

@@ -1,0 +1,3 @@
+# Chunking documents
+
+Chunking decides what a retriever can find. Chunks that are too large dilute the signal and waste prompt space, while chunks that are too small lose the context needed to answer. A common starting point is a few hundred tokens per chunk. Overlap between neighbouring chunks keeps a sentence that crosses a boundary retrievable from at least one chunk. Splitting on natural boundaries such as headings and paragraphs usually beats splitting at fixed character counts. Chunk size and overlap are tuning parameters, so measure retrieval quality on labelled questions rather than guessing.

@@ -1,0 +1,3 @@
+# Embeddings and vector search
+
+An embedding model maps text to a vector so that texts with similar meaning land close together. Similarity between a query vector and a chunk vector is usually measured with cosine similarity, which compares direction and ignores length. Normalising vectors to unit length turns cosine similarity into a plain dot product, which is fast to compute for thousands of chunks. For millions of chunks, approximate nearest neighbour indexes such as HNSW trade a little accuracy for large speedups. Dense embeddings capture synonyms and paraphrases that keyword matching misses, but they can blur exact identifiers like error codes or product names.
