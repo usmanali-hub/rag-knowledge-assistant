@@ -44,3 +44,41 @@ class HashingEmbedder:
                 out[row, h % self.dim] += sign
         norms = np.linalg.norm(out, axis=1, keepdims=True)
         return out / np.where(norms == 0, 1.0, norms)
+
+
+class LSAEmbedder:
+    """Latent semantic analysis: TF-IDF followed by a truncated SVD fitted on the corpus.
+
+    Words that appear in the same documents end up with similar directions, so a query can match a
+    passage that shares no exact word with it. It only knows the vocabulary of the corpus it was
+    fitted on, which makes it a small offline stand-in for a trained embedding model.
+    """
+
+    def __init__(self, vocab: dict[str, int], idf: np.ndarray, components: np.ndarray) -> None:
+        self.vocab, self.idf, self.components = vocab, idf, components
+
+    @classmethod
+    def fit(cls, texts: list[str], dim: int = 64) -> LSAEmbedder:
+        if not texts:
+            raise ValueError("need at least one text to fit")
+        tokenized = [tokenize(t) for t in texts]
+        vocab = {w: i for i, w in enumerate(sorted({w for toks in tokenized for w in toks}))}
+        counts = np.zeros((len(texts), len(vocab)))
+        for row, toks in enumerate(tokenized):
+            for w in toks:
+                counts[row, vocab[w]] += 1
+        df = (counts > 0).sum(axis=0)
+        idf = np.log((1 + len(texts)) / (1 + df)) + 1.0
+        tfidf = np.log1p(counts) * idf
+        _, _, vt = np.linalg.svd(tfidf, full_matrices=False)
+        return cls(vocab, idf, vt[: min(dim, vt.shape[0])].T)  # (vocab, dim)
+
+    def embed(self, texts: list[str]) -> np.ndarray:
+        counts = np.zeros((len(texts), len(self.vocab)))
+        for row, text in enumerate(texts):
+            for w in tokenize(text):
+                if w in self.vocab:
+                    counts[row, self.vocab[w]] += 1
+        out = (np.log1p(counts) * self.idf) @ self.components
+        norms = np.linalg.norm(out, axis=1, keepdims=True)
+        return np.asarray(out / np.where(norms == 0, 1.0, norms))

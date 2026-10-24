@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from rag_assistant.embeddings import HashingEmbedder
+from rag_assistant.embeddings import HashingEmbedder, LSAEmbedder
 
 
 def test_vectors_are_unit_length_and_deterministic():
@@ -27,3 +27,24 @@ def test_empty_text_gives_zero_vector_not_nan():
 def test_invalid_dim():
     with pytest.raises(ValueError):
         HashingEmbedder(dim=0)
+
+
+def test_lsa_connects_words_that_share_contexts():
+    texts = [
+        "car engine fuel", "automobile engine fuel", "car wheel road", "automobile wheel road",
+        "banana fruit sweet", "apple fruit sweet",
+    ]
+    e = LSAEmbedder.fit(texts, dim=3)
+    q, other_word_same_topic, unrelated = e.embed(["car", "automobile", "banana"])
+    assert q @ other_word_same_topic > q @ unrelated  # no shared word, yet closer
+
+
+def test_lsa_unit_vectors_and_unknown_words():
+    e = LSAEmbedder.fit(["alpha beta", "beta gamma", "gamma delta"], dim=2)
+    assert np.allclose(np.linalg.norm(e.embed(["alpha beta"]), axis=1), 1.0)
+    assert np.count_nonzero(e.embed(["zzzz"])) == 0  # out-of-vocabulary text gives a zero vector
+
+
+def test_lsa_requires_text():
+    with pytest.raises(ValueError):
+        LSAEmbedder.fit([])
