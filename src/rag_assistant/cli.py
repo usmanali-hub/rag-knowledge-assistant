@@ -5,16 +5,33 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .evaluate import compare_modes, load_cases
+from .embeddings import Embedder, HashingEmbedder, LSAEmbedder
+from .evaluate import Case, compare_modes, load_cases
 from .generate import ExtractiveAnswerer
 from .retriever import Retriever, load_corpus
+from .text import Chunk
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def make_embedder(name: str, chunks: list[Chunk]) -> Embedder:
+    if name == "lsa":
+        return LSAEmbedder.fit([c.text for c in chunks])
+    return HashingEmbedder()
+
+
+def _print_table(title: str, results: dict[str, dict[str, float]]) -> None:
+    metrics = list(next(iter(results.values())))
+    print(f"\n{title}")
+    print(f"{'mode':<8} " + " ".join(f"{m:>10}" for m in metrics))
+    for mode, values in results.items():
+        print(f"{mode:<8} " + " ".join(f"{v:>10.3f}" for v in values.values()))
 
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="rag_assistant")
     p.add_argument("--corpus", default=str(ROOT / "data" / "corpus"))
+    p.add_argument("--embedder", choices=["hashing", "lsa"], default="lsa")
     sub = p.add_subparsers(dest="cmd", required=True)
     ask = sub.add_parser("ask", help="answer a question from the corpus")
     ask.add_argument("question")
@@ -25,7 +42,8 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("-k", type=int, default=3)
     args = p.parse_args(argv)
 
-    retriever = Retriever(load_corpus(args.corpus))
+    chunks = load_corpus(args.corpus)
+    retriever = Retriever(chunks, make_embedder(args.embedder, chunks))
     if args.cmd == "ask":
         hits = retriever.search(args.question, args.k, args.mode)
         print(ExtractiveAnswerer().answer(args.question, hits))
@@ -33,10 +51,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {h.score:.3f}  {h.chunk.id}")
         return 0
 
-    results = compare_modes(retriever, load_cases(args.cases), args.k)
-    print(f"{'mode':<8} " + " ".join(f"{m:>10}" for m in next(iter(results.values()))))
-    for mode, metrics in results.items():
-        print(f"{mode:<8} " + " ".join(f"{v:>10.3f}" for v in metrics.values()))
+    cases = load_cases(args.cases)
+    print(f"embedder: {args.embedder}, {len(chunks)} chunks, {len(cases)} questions")
+    _print_table("all questions", compare_modes(retriever, cases, args.k))
+    for kind in sorted({c.get("type", "") for c in cases} - {""}):
+        subset: list[Case] = [c for c in cases if c.get("type") == kind]
+        _print_table(f"{kind} questions ({len(subset)})", compare_modes(retriever, subset, args.k))
     return 0
 
 

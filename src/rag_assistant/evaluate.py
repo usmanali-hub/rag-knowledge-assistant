@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import NotRequired, TypedDict, cast
 
 from .retriever import Hit, Retriever
 
@@ -13,6 +13,7 @@ from .retriever import Hit, Retriever
 class Case(TypedDict):
     question: str
     sources: list[str]
+    type: NotRequired[str]
 
 
 def first_relevant_rank(hits: list[Hit], relevant_sources: set[str]) -> int | None:
