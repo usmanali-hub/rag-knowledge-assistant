@@ -1,0 +1,3 @@
+# Fine-tuning versus prompting
+
+Fine-tuning updates a model's weights on examples of the behaviour you want, while prompting changes only the input. Prompting and retrieval are the cheaper first choice, because they need no training run and can be changed in minutes. Fine-tuning helps when the task needs a consistent style or format, when prompts have become very long, or when a smaller model must match a larger one on a narrow task. It does not reliably teach new facts, so knowledge that changes often belongs in retrieval. Parameter-efficient methods such as LoRA train a small set of extra weights and cut the memory cost.

@@ -1,20 +1,354 @@
 [
-  {"question": "Why does RAG reduce hallucination?", "sources": ["rag-basics.md", "prompt-safety.md"]},
-  {"question": "What are the two phases of a RAG pipeline?", "sources": ["rag-basics.md"]},
-  {"question": "How much should neighbouring chunks overlap?", "sources": ["chunking.md"]},
-  {"question": "Why not make chunks very large?", "sources": ["chunking.md"]},
-  {"question": "Why normalise vectors to unit length?", "sources": ["embeddings.md"]},
-  {"question": "What speeds up nearest neighbour search for millions of vectors?", "sources": ["embeddings.md"]},
-  {"question": "Why does repeating a word many times not help a document in BM25?", "sources": ["bm25.md"]},
-  {"question": "Which ranking function weights rare terms more heavily?", "sources": ["bm25.md"]},
-  {"question": "How do I merge keyword and vector result lists without calibrating scores?", "sources": ["hybrid-search.md"]},
-  {"question": "What does a cross-encoder reranker do?", "sources": ["hybrid-search.md"]},
-  {"question": "What does recall at k measure?", "sources": ["evaluation.md"]},
-  {"question": "Why keep the evaluation set fixed?", "sources": ["evaluation.md"]},
-  {"question": "How do I make Docker rebuilds faster?", "sources": ["docker-basics.md"]},
-  {"question": "How do I run an API and a database together in containers?", "sources": ["docker-basics.md"]},
-  {"question": "What is prompt injection in retrieved documents?", "sources": ["prompt-safety.md"]},
-  {"question": "Should the model say when it doesn't know?", "sources": ["prompt-safety.md"]},
-  {"question": "Which method finds exact error codes and product names reliably?", "sources": ["bm25.md", "embeddings.md"]},
-  {"question": "How do dense embeddings handle synonyms?", "sources": ["embeddings.md"]}
+ {
+  "question": "Why does RAG reduce hallucination?",
+  "sources": [
+   "rag-basics.md",
+   "prompt-safety.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "What are the two phases of a RAG pipeline?",
+  "sources": [
+   "rag-basics.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "How much should neighbouring chunks overlap?",
+  "sources": [
+   "chunking.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "Why not make chunks very large?",
+  "sources": [
+   "chunking.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "Why normalise vectors to unit length?",
+  "sources": [
+   "embeddings.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "What speeds up nearest neighbour search for millions of vectors?",
+  "sources": [
+   "embeddings.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "Why does repeating a word many times not help a document in BM25?",
+  "sources": [
+   "bm25.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "Which ranking function weights rare terms more heavily?",
+  "sources": [
+   "bm25.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "How do I merge keyword and vector result lists without calibrating scores?",
+  "sources": [
+   "hybrid-search.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "What does a cross-encoder reranker do?",
+  "sources": [
+   "hybrid-search.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "What does recall at k measure?",
+  "sources": [
+   "evaluation.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "Why keep the evaluation set fixed?",
+  "sources": [
+   "evaluation.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "How do I make Docker rebuilds faster?",
+  "sources": [
+   "docker-basics.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "How do I run an API and a database together in containers?",
+  "sources": [
+   "docker-basics.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "What is prompt injection in retrieved documents?",
+  "sources": [
+   "prompt-safety.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "Should the model say when it doesn't know?",
+  "sources": [
+   "prompt-safety.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "Which method finds exact error codes and product names reliably?",
+  "sources": [
+   "bm25.md",
+   "embeddings.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "How do dense embeddings handle synonyms?",
+  "sources": [
+   "embeddings.md"
+  ],
+  "type": "lexical"
+ },
+ {
+  "question": "How do I stop an autonomous assistant from running forever?",
+  "sources": [
+   "agents.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "Why prefer a handful of precise functions over many overlapping ones for the model to call?",
+  "sources": [
+   "agents.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "When is it worth retraining a model instead of rewriting the instructions?",
+  "sources": [
+   "fine-tuning.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How can I adapt a big network cheaply by training only a few extra parameters?",
+  "sources": [
+   "fine-tuning.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How many characters fit in a model's input budget?",
+  "sources": [
+   "tokenization.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "What gets cut first when the input is too long for the model?",
+  "sources": [
+   "tokenization.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How can I avoid paying twice for the same question sent to the model?",
+  "sources": [
+   "caching.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "What is the risk of reusing an answer for a similar-sounding question?",
+  "sources": [
+   "caching.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "What should a client do after the server says to slow down?",
+  "sources": [
+   "rate-limits.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "Why add randomness to the waiting time between attempts?",
+  "sources": [
+   "rate-limits.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "At what scale does a specialised store beat a simple matrix of numbers?",
+  "sources": [
+   "vector-databases.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How do I restrict similarity results to a single customer?",
+  "sources": [
+   "vector-databases.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "Why look at the slowest requests instead of the mean?",
+  "sources": [
+   "monitoring.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How do I notice answers getting worse over time?",
+  "sources": [
+   "monitoring.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How do I release a new version with no downtime?",
+  "sources": [
+   "kubernetes.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How does traffic avoid containers that are still starting up?",
+  "sources": [
+   "kubernetes.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How do I catch a broken commit automatically within minutes?",
+  "sources": [
+   "ci-cd.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "Why are unreliable checks that people ignore harmful?",
+  "sources": [
+   "ci-cd.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "Why is my database query slow on a huge table?",
+  "sources": [
+   "sql-indexes.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "What is the downside of adding many lookup structures to a table?",
+  "sources": [
+   "sql-indexes.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "Do annotations on functions change behaviour while the program runs?",
+  "sources": [
+   "python-typing.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How do I describe an object by the methods it has rather than its parent class?",
+  "sources": [
+   "python-typing.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How should a web endpoint reject bad input before it reaches the model?",
+  "sources": [
+   "api-design.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "Where should passwords and keys live?",
+  "sources": [
+   "api-design.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How do I avoid losing a sentence that falls between two pieces?",
+  "sources": [
+   "chunking.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How do I measure closeness of meaning between two texts?",
+  "sources": [
+   "embeddings.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "Which classical method needs no training and handles exact names well?",
+  "sources": [
+   "bm25.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "Why combine two different search methods?",
+  "sources": [
+   "hybrid-search.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How do I know if the lookup step is good enough?",
+  "sources": [
+   "evaluation.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How do I package an app so it behaves the same everywhere?",
+  "sources": [
+   "docker-basics.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "A fetched page says to disregard your rules; how do I protect the model?",
+  "sources": [
+   "prompt-safety.md"
+  ],
+  "type": "paraphrase"
+ },
+ {
+  "question": "How can a model answer about private files it was never trained on?",
+  "sources": [
+   "rag-basics.md"
+  ],
+  "type": "paraphrase"
+ }
 ]
