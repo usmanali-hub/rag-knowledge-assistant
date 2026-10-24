@@ -12,7 +12,8 @@ interface so a real embedding model or LLM can be plugged in.
 ```bash
 pip install -e ".[dev]"
 python -m rag_assistant ask "Why normalise vectors to unit length?"
-python -m rag_assistant eval
+python -m rag_assistant eval                      # LSA embeddings (default)
+python -m rag_assistant --embedder hashing eval   # compare
 pytest
 ```
 
@@ -28,28 +29,37 @@ to compute for thousands of chunks. [embeddings.md#0]
 |---|---|---|
 | Chunk | `text.chunk_words` | Word windows with overlap; validated arguments |
 | Keyword search | `bm25.BM25` | Written from the formula: IDF, saturating term frequency, length normalisation |
-| Vector search | `embeddings.HashingEmbedder` | Offline signed feature hashing with bigrams; `Embedder` protocol for real models |
+| Vector search | `embeddings.LSAEmbedder`, `HashingEmbedder` | Offline LSA (TF-IDF + SVD) and signed feature hashing; `Embedder` protocol for real models |
 | Hybrid | `retriever.reciprocal_rank_fusion` | Merges ranks, so BM25 and cosine scores need no calibration |
 | Generate | `generate.LLMAnswerer`, `ExtractiveAnswerer` | Grounded prompt with `[source#chunk]` citations; wraps any `complete(prompt) -> str` |
 | Evaluate | `evaluate.evaluate` | recall@k and MRR over labelled questions |
 
 ## Evaluation
 
-`python -m rag_assistant eval` compares the three retrieval modes on 18 labelled questions over 8
-short documents in `data/corpus/`:
+`python -m rag_assistant eval` compares retrieval modes on 50 labelled questions over 20 short
+documents (40 chunks) in `data/corpus/`. Questions come in two kinds:
 
-| mode | recall@1 | recall@3 | MRR (k=3) |
-|---|---|---|---|
-| BM25 | 0.944 | 1.000 | 0.972 |
-| dense (hashing) | 0.944 | 1.000 | 0.972 |
-| hybrid (RRF) | 1.000 | 1.000 | 1.000 |
+- **lexical** (18): they reuse words from the answer passage
+- **paraphrase** (32): written to avoid the passage's key terms, e.g. "How do I stop an autonomous
+  assistant from running forever?" for a passage about a *maximum number of steps*
 
-**Read these numbers carefully.** The corpus is tiny and the questions were written against it, so
-the scores are close to ceiling and show that the harness works, not that the system is state of the
-art. The hashing embedder is lexical, so "dense" here does not capture synonyms the way a trained
-model would. The useful part is the method: fixed labelled questions, comparable metrics, and a CI
-regression guard (`test_hybrid_is_not_worse_than_either_single_mode`) so a change to chunking or
-fusion cannot quietly make retrieval worse.
+Results at k=3 (recall@3 / MRR):
+
+| questions | embedder | BM25 | dense | hybrid (RRF) |
+|---|---|---|---|---|
+| lexical | LSA | 1.000 / 0.972 | 1.000 / 0.944 | 1.000 / 0.972 |
+| paraphrase | LSA | 0.875 / 0.740 | 0.875 / 0.688 | 0.875 / 0.708 |
+| paraphrase | hashing | 0.875 / 0.740 | 0.344 / 0.328 | 0.688 / 0.516 |
+
+What this shows:
+
+- **Paraphrased questions are much harder** than lexical ones: top-1 accuracy on them is about 0.6 for the best mode, against 0.94 for lexical.
+- **The hashing embedder is nearly useless on paraphrases** (recall@3 0.344), because it only sees shared words. Fusing it with BM25 makes results *worse* than BM25 alone (0.688 vs 0.875), so a weak ranker can hurt a hybrid.
+- **LSA** (TF-IDF plus SVD fitted on the corpus, so it learns which words co-occur) lifts dense search to BM25's level on paraphrases, but hybrid does not beat BM25 here. I did not tune fusion weights to the eval set, because that would overfit 50 questions.
+- **Limits:** the corpus is small and I wrote both documents and questions, so treat the numbers as a comparison between methods on one dataset, not as general performance. A trained embedding model and a cross-encoder reranker are the next step; the model weights could not be downloaded in my build environment, so that comparison is still open.
+
+CI runs `test_retrieval_regression_guards` and a check that LSA clearly beats hashing on paraphrases,
+so a change to chunking, embeddings or fusion cannot quietly make retrieval worse.
 
 ## Using a real model
 
@@ -76,7 +86,7 @@ Retrieved text is treated as untrusted data (see `data/corpus/prompt-safety.md`)
 
 ## Roadmap
 
-- Sentence-transformer embedder behind the existing `Embedder` protocol
+- Trained sentence-transformer embedder behind the existing `Embedder` protocol, evaluated on the same questions
 - Cross-encoder reranking of the top candidates
 - Larger corpus with answer-level evaluation (faithfulness, citation accuracy)
 - FastAPI service and Docker image
