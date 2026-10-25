@@ -50,6 +50,7 @@ Results at k=3 (recall@3 / MRR):
 | lexical | LSA | 1.000 / 0.972 | 1.000 / 0.944 | 1.000 / 0.972 |
 | paraphrase | LSA | 0.875 / 0.740 | 0.875 / 0.688 | 0.875 / 0.708 |
 | paraphrase | hashing | 0.875 / 0.740 | 0.344 / 0.328 | 0.688 / 0.516 |
+| paraphrase | pretrained word vectors | 0.875 / 0.740 | 0.812 / 0.714 | 0.812 / 0.740 |
 
 What this shows:
 
@@ -73,24 +74,46 @@ docstring is the passage to find. It is synthetic, but the text comes from the l
 |---|---|---|---|
 | hashing | 0.682 / 0.573 | 0.400 / 0.333 | 0.576 / 0.443 |
 | LSA | 0.682 / 0.573 | 0.694 / 0.567 | 0.694 / 0.565 |
+| pretrained word vectors | 0.682 / 0.573 | 0.471 / 0.376 | 0.588 / 0.459 |
 
 The ordering matches my own questions: BM25 is a strong baseline, hashing vectors are weak, LSA
 matches BM25, and hybrid does not clearly win. Passages differ between Python versions, so numbers
 will vary slightly with the interpreter.
 
+### Pretrained vectors (and why they did not win)
+
+`--embedder wordvec` averages real pretrained GloVe word vectors (300-d, the vectors shipped in
+spaCy's `en_core_web_lg` package, read straight from the package files), weighted by IDF. These are
+trained on a huge external corpus, so "car" and "automobile" are close (cosine 0.75) even though
+they never co-occur in my documents. I expected them to beat LSA. They did not: averaging word vectors
+blurs short technical passages, so on the paraphrase questions they reach 0.812 recall@3 against 0.875
+for LSA and BM25, and on the standard-library benchmark 0.471 against 0.694 for LSA. (The smaller
+`en_core_web_md` package keeps only 20,000 vectors, which made things worse, so I use `lg`.) A
+sentence-transformer model would likely do better; its weights are not reachable from my build
+environment, so that comparison is still open. This mode is not run in CI because the model is
+~400 MB.
+
+```bash
+pip install spacy
+pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+python -m rag_assistant --embedder wordvec eval
+```
+
 ### Tuning the fusion weight without fooling myself
 
 `python -m rag_assistant eval-tuned` picks the BM25 weight in rank fusion on half of the 50 questions
-(dev) and reports on the other half (held-out), so the weight is never judged on the questions that
-chose it:
+(dev) and reports on the other half (held-out). It also gives a paired bootstrap 95% interval for the
+change in MRR, so a gain that is inside the noise is labelled as such:
 
-| embedder | tuned weight | held-out hybrid, weight 1.0 | held-out hybrid, tuned |
-|---|---|---|---|
-| hashing | 3.0 | 0.760 / 0.673 | 0.840 / 0.800 |
-| LSA | 0.5 | 0.920 / 0.800 | 0.920 / 0.753 |
+| embedder | tuned weight | MRR change on held-out questions | 95% interval | verdict |
+|---|---|---|---|---|
+| hashing | 3.0 | +0.127 | [+0.013, +0.260] | unlikely to be chance |
+| LSA | 0.5 | -0.047 | [-0.107, +0.000] | could be chance |
+| pretrained vectors | 0.5 | -0.080 | [-0.160, -0.013] | tuning made it worse |
 
-Tuning helps when one ranker is much weaker (hashing: trust BM25 more) and does nothing useful when
-the two are comparable (LSA). With only 25 held-out questions, differences of a few points are noise.
+Tuning helps when one ranker is much weaker (hashing: trust BM25 more). For the stronger embedders the
+weight picked on 25 dev questions did not transfer, and for pretrained vectors it overfit and hurt the
+held-out half. The default weight of 1.0 is the safer choice at this sample size.
 
 ## Using a real model
 
