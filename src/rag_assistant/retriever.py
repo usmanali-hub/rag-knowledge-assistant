@@ -18,16 +18,20 @@ class Hit:
     score: float
 
 
-def reciprocal_rank_fusion(rankings: list[list[int]], k: int = 60) -> dict[int, float]:
+def reciprocal_rank_fusion(
+    rankings: list[list[int]], k: int = 60, weights: list[float] | None = None
+) -> dict[int, float]:
     """Merge several best-first rankings of item ids.
 
     Each item scores sum(1 / (k + rank)) over the rankings it appears in. Using ranks instead of
-    raw scores means BM25 and cosine scores never have to be put on the same scale.
+    raw scores means BM25 and cosine scores never have to be put on the same scale. Optional
+    ``weights`` (one per ranking) let a stronger ranker count for more.
     """
+    weights = weights or [1.0] * len(rankings)
     fused: dict[int, float] = {}
-    for ranking in rankings:
+    for ranking, weight in zip(rankings, weights):
         for rank, item in enumerate(ranking, start=1):
-            fused[item] = fused.get(item, 0.0) + 1.0 / (k + rank)
+            fused[item] = fused.get(item, 0.0) + weight / (k + rank)
     return fused
 
 
@@ -52,7 +56,9 @@ class Retriever:
         # Stable sort so ties keep document order, which makes results deterministic.
         return list(np.argsort(-scores, kind="stable"))
 
-    def search(self, query: str, k: int = 3, mode: str = "hybrid") -> list[Hit]:
+    def search(
+        self, query: str, k: int = 3, mode: str = "hybrid", keyword_weight: float = 1.0
+    ) -> list[Hit]:
         keyword = np.array(self._bm25.scores(query))
         vector = self._matrix @ self.embedder.embed([query])[0]
         if mode == "bm25":
@@ -60,7 +66,9 @@ class Retriever:
         elif mode == "dense":
             order, score = self._rank(vector), vector
         elif mode == "hybrid":
-            fused = reciprocal_rank_fusion([self._rank(keyword), self._rank(vector)])
+            fused = reciprocal_rank_fusion(
+                [self._rank(keyword), self._rank(vector)], weights=[keyword_weight, 1.0]
+            )
             score = np.array([fused.get(i, 0.0) for i in range(len(self.chunks))])
             order = self._rank(score)
         else:

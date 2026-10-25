@@ -56,3 +56,27 @@ def compare_modes(
 
         results[mode] = evaluate(search, cases, k)
     return results
+
+
+def split_dev_test(cases: list[Case]) -> tuple[list[Case], list[Case]]:
+    """Alternate cases between a tuning (dev) set and a held-out test set."""
+    return cases[0::2], cases[1::2]
+
+
+def tune_keyword_weight(
+    retriever: Retriever,
+    dev: list[Case],
+    grid: tuple[float, ...] = (0.5, 1.0, 1.5, 2.0, 3.0),
+    k: int = 3,
+) -> float:
+    """Pick the BM25 fusion weight with the best MRR on ``dev`` (first grid value wins ties)."""
+    best_weight, best_mrr = grid[0], -1.0
+    for weight in grid:
+
+        def search(query: str, top: int, w: float = weight) -> list[Hit]:
+            return retriever.search(query, top, "hybrid", keyword_weight=w)
+
+        mrr = evaluate(search, dev, k)["mrr"]
+        if mrr > best_mrr + 1e-12:
+            best_weight, best_mrr = weight, mrr
+    return best_weight
