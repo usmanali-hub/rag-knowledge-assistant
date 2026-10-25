@@ -21,3 +21,5 @@ jobs:
       - run: pytest -q
       - name: Retrieval evaluation
         run: python -m rag_assistant eval
+      - name: Held-out standard library benchmark
+        run: python -m rag_assistant eval-stdlib

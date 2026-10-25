@@ -56,10 +56,41 @@ What this shows:
 - **Paraphrased questions are much harder** than lexical ones: top-1 accuracy on them is about 0.6 for the best mode, against 0.94 for lexical.
 - **The hashing embedder is nearly useless on paraphrases** (recall@3 0.344), because it only sees shared words. Fusing it with BM25 makes results *worse* than BM25 alone (0.688 vs 0.875), so a weak ranker can hurt a hybrid.
 - **LSA** (TF-IDF plus SVD fitted on the corpus, so it learns which words co-occur) lifts dense search to BM25's level on paraphrases, but hybrid does not beat BM25 here. I did not tune fusion weights to the eval set, because that would overfit 50 questions.
-- **Limits:** the corpus is small and I wrote both documents and questions, so treat the numbers as a comparison between methods on one dataset, not as general performance. A trained embedding model and a cross-encoder reranker are the next step; the model weights could not be downloaded in my build environment, so that comparison is still open.
+- **Limits:** the corpus is small and I wrote both documents and questions, so treat these numbers as a comparison between methods on one dataset. The standard-library benchmark below reduces that bias. A trained embedding model and a cross-encoder reranker are the next step; the model weights could not be downloaded in my build environment, so that comparison is still open.
 
 CI runs `test_retrieval_regression_guards` and a check that LSA clearly beats hashing on paraphrases,
 so a change to chunking, embeddings or fusion cannot quietly make retrieval worse.
+
+### Held-out check on text I did not write
+
+The 50 questions above were written by me, which is a weakness. `python -m rag_assistant eval-stdlib`
+builds a second benchmark from the Python standard library docs: for each documented function, the
+first sentence of its docstring (with the function's name removed) is the query and the rest of the
+docstring is the passage to find. It is synthetic, but the text comes from the library authors.
+85 passages from Python 3.13, recall@3 / MRR:
+
+| embedder | BM25 | dense | hybrid |
+|---|---|---|---|
+| hashing | 0.682 / 0.573 | 0.400 / 0.333 | 0.576 / 0.443 |
+| LSA | 0.682 / 0.573 | 0.694 / 0.567 | 0.694 / 0.565 |
+
+The ordering matches my own questions: BM25 is a strong baseline, hashing vectors are weak, LSA
+matches BM25, and hybrid does not clearly win. Passages differ between Python versions, so numbers
+will vary slightly with the interpreter.
+
+### Tuning the fusion weight without fooling myself
+
+`python -m rag_assistant eval-tuned` picks the BM25 weight in rank fusion on half of the 50 questions
+(dev) and reports on the other half (held-out), so the weight is never judged on the questions that
+chose it:
+
+| embedder | tuned weight | held-out hybrid, weight 1.0 | held-out hybrid, tuned |
+|---|---|---|---|
+| hashing | 3.0 | 0.760 / 0.673 | 0.840 / 0.800 |
+| LSA | 0.5 | 0.920 / 0.800 | 0.920 / 0.753 |
+
+Tuning helps when one ranker is much weaker (hashing: trust BM25 more) and does nothing useful when
+the two are comparable (LSA). With only 25 held-out questions, differences of a few points are noise.
 
 ## Using a real model
 
@@ -88,5 +119,5 @@ Retrieved text is treated as untrusted data (see `data/corpus/prompt-safety.md`)
 
 - Trained sentence-transformer embedder behind the existing `Embedder` protocol, evaluated on the same questions
 - Cross-encoder reranking of the top candidates
-- Larger corpus with answer-level evaluation (faithfulness, citation accuracy)
+- Answer-level evaluation (faithfulness, citation accuracy)
 - FastAPI service and Docker image
