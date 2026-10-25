@@ -6,9 +6,16 @@ import argparse
 from pathlib import Path
 
 from .embeddings import Embedder, HashingEmbedder, LSAEmbedder
-from .evaluate import Case, compare_modes, load_cases
+from .evaluate import (
+    Case,
+    compare_modes,
+    evaluate,
+    load_cases,
+    split_dev_test,
+    tune_keyword_weight,
+)
 from .generate import ExtractiveAnswerer
-from .retriever import Retriever, load_corpus
+from .retriever import Hit, Retriever, load_corpus
 from .text import Chunk
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -40,7 +47,21 @@ def main(argv: list[str] | None = None) -> int:
     ev = sub.add_parser("eval", help="compare retrieval modes on the labelled questions")
     ev.add_argument("--cases", default=str(ROOT / "evals" / "questions.json"))
     ev.add_argument("-k", type=int, default=3)
+    std = sub.add_parser("eval-stdlib", help="held-out benchmark built from Python standard library docs")
+    std.add_argument("-k", type=int, default=3)
+    tune = sub.add_parser("eval-tuned", help="tune the fusion weight on a dev split, report on a held-out split")
+    tune.add_argument("--cases", default=str(ROOT / "evals" / "questions.json"))
     args = p.parse_args(argv)
+
+    if args.cmd == "eval-stdlib":
+        import sys
+
+        from .stdlib_eval import build_benchmark, run
+
+        n = len(build_benchmark()[0])
+        print(f"embedder: {args.embedder}, {n} passages from the standard library (Python {sys.version.split()[0]})")
+        _print_table("stdlib summary-to-description questions", run(args.embedder, args.k))
+        return 0
 
     chunks = load_corpus(args.corpus)
     retriever = Retriever(chunks, make_embedder(args.embedder, chunks))
@@ -49,6 +70,18 @@ def main(argv: list[str] | None = None) -> int:
         print(ExtractiveAnswerer().answer(args.question, hits))
         for h in hits:
             print(f"  {h.score:.3f}  {h.chunk.id}")
+        return 0
+
+    if args.cmd == "eval-tuned":
+        all_cases = load_cases(args.cases)
+        dev, test = split_dev_test(all_cases)
+        weight = tune_keyword_weight(retriever, dev)
+        print(f"embedder: {args.embedder}; tuned BM25 weight on {len(dev)} dev questions: {weight}")
+        for label, weights in (("default weight 1.0", 1.0), (f"tuned weight {weight}", weight)):
+            def search(q: str, top: int, w: float = weights) -> list[Hit]:
+                return retriever.search(q, top, "hybrid", keyword_weight=w)
+
+            _print_table(f"hybrid, {label}, on {len(test)} held-out questions", {"hybrid": evaluate(search, test, 3)})
         return 0
 
     cases = load_cases(args.cases)
