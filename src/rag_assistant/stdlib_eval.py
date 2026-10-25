@@ -60,12 +60,14 @@ def build_benchmark(modules: Iterable[str] = MODULES) -> tuple[list[Chunk], list
     return chunks, cases
 
 
-def run(embedder_name: str, k: int = 3) -> dict[str, dict[str, float]]:
+def run(
+    embedder_name: str, k: int = 3, vector_model: str = "en_core_web_lg"
+) -> dict[str, dict[str, float]]:
     """Evaluate every retrieval mode on the standard-library benchmark."""
     from .cli import make_embedder  # local import: cli imports this module's siblings
 
     chunks, cases = build_benchmark()
-    retriever = Retriever(chunks, make_embedder(embedder_name, chunks))
+    retriever = Retriever(chunks, make_embedder(embedder_name, chunks, vector_model))
     results: dict[str, dict[str, float]] = {}
     for mode in ("bm25", "dense", "hybrid"):
 

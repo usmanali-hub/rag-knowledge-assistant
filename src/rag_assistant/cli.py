@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .embeddings import Embedder, HashingEmbedder, LSAEmbedder
+from .embeddings import Embedder, HashingEmbedder, LSAEmbedder, WordVectorEmbedder
 from .evaluate import (
     Case,
     compare_modes,
     evaluate,
     load_cases,
+    paired_bootstrap_ci,
+    reciprocal_ranks,
     split_dev_test,
     tune_keyword_weight,
 )
@@ -21,9 +23,11 @@ from .text import Chunk
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def make_embedder(name: str, chunks: list[Chunk]) -> Embedder:
+def make_embedder(name: str, chunks: list[Chunk], vector_model: str = "en_core_web_lg") -> Embedder:
     if name == "lsa":
         return LSAEmbedder.fit([c.text for c in chunks])
+    if name == "wordvec":
+        return WordVectorEmbedder.from_spacy_package(vector_model).fit_idf([c.text for c in chunks])
     return HashingEmbedder()
 
 
@@ -38,7 +42,8 @@ def _print_table(title: str, results: dict[str, dict[str, float]]) -> None:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="rag_assistant")
     p.add_argument("--corpus", default=str(ROOT / "data" / "corpus"))
-    p.add_argument("--embedder", choices=["hashing", "lsa"], default="lsa")
+    p.add_argument("--embedder", choices=["hashing", "lsa", "wordvec"], default="lsa")
+    p.add_argument("--vector-model", default="en_core_web_lg", help="spaCy package for --embedder wordvec")
     sub = p.add_subparsers(dest="cmd", required=True)
     ask = sub.add_parser("ask", help="answer a question from the corpus")
     ask.add_argument("question")
@@ -60,11 +65,11 @@ def main(argv: list[str] | None = None) -> int:
 
         n = len(build_benchmark()[0])
         print(f"embedder: {args.embedder}, {n} passages from the standard library (Python {sys.version.split()[0]})")
-        _print_table("stdlib summary-to-description questions", run(args.embedder, args.k))
+        _print_table("stdlib summary-to-description questions", run(args.embedder, args.k, args.vector_model))
         return 0
 
     chunks = load_corpus(args.corpus)
-    retriever = Retriever(chunks, make_embedder(args.embedder, chunks))
+    retriever = Retriever(chunks, make_embedder(args.embedder, chunks, args.vector_model))
     if args.cmd == "ask":
         hits = retriever.search(args.question, args.k, args.mode)
         print(ExtractiveAnswerer().answer(args.question, hits))
@@ -82,6 +87,16 @@ def main(argv: list[str] | None = None) -> int:
                 return retriever.search(q, top, "hybrid", keyword_weight=w)
 
             _print_table(f"hybrid, {label}, on {len(test)} held-out questions", {"hybrid": evaluate(search, test, 3)})
+
+        def default(q: str, top: int) -> list[Hit]:
+            return retriever.search(q, top, "hybrid", keyword_weight=1.0)
+
+        def tuned(q: str, top: int) -> list[Hit]:
+            return retriever.search(q, top, "hybrid", keyword_weight=weight)
+
+        mean, low, high = paired_bootstrap_ci(reciprocal_ranks(default, test), reciprocal_ranks(tuned, test))
+        verdict = "could be chance" if low <= 0 <= high else "unlikely to be chance"
+        print(f"\nMRR change from tuning: {mean:+.3f}, 95% interval [{low:+.3f}, {high:+.3f}] ({verdict})")
         return 0
 
     cases = load_cases(args.cases)

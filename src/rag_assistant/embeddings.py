@@ -8,6 +8,7 @@ deterministic. It is a bag-of-words signal, not a semantic one: it will not know
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from itertools import pairwise
 from typing import Protocol
 
@@ -82,3 +83,60 @@ class LSAEmbedder:
         out = (np.log1p(counts) * self.idf) @ self.components
         norms = np.linalg.norm(out, axis=1, keepdims=True)
         return np.asarray(out / np.where(norms == 0, 1.0, norms))
+
+
+class WordVectorEmbedder:
+    """Mean of pretrained word vectors, weighted by inverse document frequency.
+
+    Unlike ``LSAEmbedder`` the word vectors were trained on a large external corpus, so related
+    words ("car", "automobile") are close even if they never co-occur in your documents. Pass any
+    ``lookup(word) -> vector or None``; ``from_spacy_package`` reads the vectors shipped inside a
+    spaCy model package without loading the spaCy pipeline.
+    """
+
+    def __init__(
+        self,
+        lookup: Callable[[str], np.ndarray | None],
+        dim: int,
+        idf: dict[str, float] | None = None,
+    ) -> None:
+        self.lookup, self.dim, self.idf = lookup, dim, idf or {}
+
+    def fit_idf(self, texts: list[str]) -> WordVectorEmbedder:
+        """Return a copy that down-weights words appearing in many of ``texts``."""
+        df: dict[str, int] = {}
+        for text in texts:
+            for word in set(tokenize(text)):
+                df[word] = df.get(word, 0) + 1
+        n = len(texts)
+        idf = {w: float(np.log((1 + n) / (1 + c)) + 1.0) for w, c in df.items()}
+        return WordVectorEmbedder(self.lookup, self.dim, idf)
+
+    def embed(self, texts: list[str]) -> np.ndarray:
+        out = np.zeros((len(texts), self.dim))
+        for row, text in enumerate(texts):
+            for word in tokenize(text):
+                vec = self.lookup(word)
+                if vec is not None:
+                    out[row] += self.idf.get(word, 1.0) * vec
+        norms = np.linalg.norm(out, axis=1, keepdims=True)
+        return np.asarray(out / np.where(norms == 0, 1.0, norms))
+
+    @classmethod
+    def from_spacy_package(cls, name: str = "en_core_web_md") -> WordVectorEmbedder:
+        import importlib
+        from pathlib import Path
+
+        srsly = importlib.import_module("srsly")  # optional dependency, imported lazily
+        hash_string = importlib.import_module("spacy.strings").hash_string
+        package = importlib.import_module(name)
+        vocab = next(Path(str(package.__file__)).parent.glob(f"{name}-*")) / "vocab"
+        matrix = np.load(vocab / "vectors", allow_pickle=False)
+        with open(vocab / "key2row", "rb") as f:
+            key2row = next(iter(srsly.msgpack.Unpacker(f, raw=False, strict_map_key=False)))
+
+        def lookup(word: str) -> np.ndarray | None:
+            row = key2row.get(hash_string(word))
+            return None if row is None else np.asarray(matrix[row], dtype=np.float64)
+
+        return cls(lookup, matrix.shape[1])

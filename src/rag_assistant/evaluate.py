@@ -7,6 +7,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import NotRequired, TypedDict, cast
 
+import numpy as np
+
 from .retriever import Hit, Retriever
 
 
@@ -80,3 +82,30 @@ def tune_keyword_weight(
         if mrr > best_mrr + 1e-12:
             best_weight, best_mrr = weight, mrr
     return best_weight
+
+
+def reciprocal_ranks(
+    search: Callable[[str, int], list[Hit]], cases: list[Case], k: int = 3
+) -> list[float]:
+    """Per-question reciprocal rank (0 when nothing relevant is in the top k)."""
+    out = []
+    for case in cases:
+        rank = first_relevant_rank(search(case["question"], k), set(case["sources"]))
+        out.append(0.0 if rank is None else 1.0 / rank)
+    return out
+
+
+def paired_bootstrap_ci(
+    a: list[float], b: list[float], n_resamples: int = 5000, seed: int = 0
+) -> tuple[float, float, float]:
+    """Mean difference (b - a) with a 95% bootstrap interval, resampling questions in pairs.
+
+    If the interval contains 0 the difference could easily be chance at this sample size.
+    """
+    if len(a) != len(b) or not a:
+        raise ValueError("need two equal-length, non-empty score lists")
+    diff = np.array(b) - np.array(a)
+    rng = np.random.default_rng(seed)
+    means = rng.choice(diff, size=(n_resamples, len(diff)), replace=True).mean(axis=1)
+    low, high = np.percentile(means, [2.5, 97.5])
+    return float(diff.mean()), float(low), float(high)

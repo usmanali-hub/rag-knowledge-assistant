@@ -44,3 +44,30 @@ def test_tune_keyword_weight_returns_a_grid_value():
     r = Retriever(chunks)
     dev = [{"question": "ocean wave", "sources": ["d1.md"]}, {"question": "apple pie", "sources": ["d0.md"]}]
     assert tune_keyword_weight(r, dev, grid=(0.5, 1.0, 2.0)) in (0.5, 1.0, 2.0)  # type: ignore[arg-type]
+
+
+def test_paired_bootstrap_detects_a_clear_gain_and_a_null_effect():
+    from rag_assistant.evaluate import paired_bootstrap_ci
+
+    mean, low, high = paired_bootstrap_ci([0.0] * 40, [1.0] * 40)
+    assert mean == 1.0 and low > 0.9 and high == 1.0
+    mean, low, high = paired_bootstrap_ci([0.5, 1.0] * 20, [1.0, 0.5] * 20)
+    assert abs(mean) < 1e-9 and low < 0 < high  # a symmetric swap is indistinguishable from noise
+
+
+def test_paired_bootstrap_validates_input():
+    from rag_assistant.evaluate import paired_bootstrap_ci
+
+    with pytest.raises(ValueError):
+        paired_bootstrap_ci([1.0], [1.0, 0.0])
+    with pytest.raises(ValueError):
+        paired_bootstrap_ci([], [])
+
+
+def test_reciprocal_ranks_per_question():
+    from rag_assistant.evaluate import reciprocal_ranks
+    from rag_assistant.retriever import Hit
+
+    results = {"q1": [Hit(Chunk("a.md", 0, "t"), 1.0)], "q2": [Hit(Chunk("x.md", 0, "t"), 1.0), Hit(Chunk("b.md", 0, "t"), 0.5)], "q3": []}
+    cases = [{"question": "q1", "sources": ["a.md"]}, {"question": "q2", "sources": ["b.md"]}, {"question": "q3", "sources": ["c.md"]}]
+    assert reciprocal_ranks(lambda q, k: results[q], cases) == [1.0, 0.5, 0.0]  # type: ignore[arg-type]
