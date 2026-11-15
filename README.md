@@ -23,6 +23,56 @@ Normalising vectors to unit length turns cosine similarity into a plain dot prod
 to compute for thousands of chunks. [embeddings.md#0]
 ```
 
+## See it work (one command)
+
+```bash
+make install   # once
+make demo      # one cited answer, the retrieval evaluation, and a latency benchmark: a few seconds, no network, no API keys
+```
+
+### Data flow
+
+```mermaid
+flowchart LR
+    docs[(data/corpus: 20 documents)] --> chunk[chunk_words: overlapping word windows]
+    chunk --> bm25[BM25 index]
+    chunk --> emb[embedder: LSA / hashing / pluggable]
+    emb --> vec[vector index]
+    q([question]) --> bm25
+    q --> vec
+    bm25 --> rrf[reciprocal rank fusion]
+    vec --> rrf
+    rrf --> prompt[grounded prompt with citations]
+    prompt --> llm[Answerer: extractive or any complete function]
+    llm --> ans([answer + chunk ids])
+    cases[(evals/questions.json: 50 labelled questions)] --> ev[evaluate: recall at k, MRR]
+    rrf --> ev
+```
+
+### Retrieval latency (measured, not claimed)
+
+`python scripts/latency_benchmark.py` times every one of the 50 labelled questions through each mode (in-process, LSA embedder,
+2-core cloud container). To see how cost grows, it also repeats the corpus 10 and 100 times (40, 400 and 4,000 chunks; the content
+repeats, so this measures speed, not retrieval quality):
+
+| chunks | index build (ms, once) | mode | p50 (ms) | p95 (ms) |
+|---|---|---|---|---|
+| 40 | 11 | bm25 | 0.10 | 0.13 |
+| 40 | 11 | dense | 0.10 | 0.14 |
+| 40 | 11 | hybrid | 0.14 | 0.19 |
+| 400 | 134 | bm25 | 0.49 | 0.70 |
+| 400 | 134 | dense | 0.49 | 0.69 |
+| 400 | 134 | hybrid | 0.87 | 1.07 |
+| 4,000 | 1,017 | bm25 | 3.00 | 4.11 |
+| 4,000 | 1,017 | dense | 3.33 | 5.87 |
+| 4,000 | 1,017 | hybrid | 5.44 | 7.31 |
+
+* Search time grows roughly in proportion to the number of chunks (both retrievers score every chunk), and hybrid costs about the sum of
+  the two. That is fine up to thousands of chunks and would need an approximate index beyond that.
+* This times retrieval only. It includes no language model and no network, so it says nothing about the latency of a full answer
+  from a hosted model.
+* The numbers move with the machine and its load; re-run the script before quoting them.
+
 ## How it works
 
 | Stage | Module | Notes |
